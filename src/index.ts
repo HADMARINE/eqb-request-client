@@ -3,22 +3,36 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 type EqbClientOptions = Partial<{
   saveAccessTokenToLocalStorage: boolean;
   accessTokenHeaderKey: string;
-  loggerLevel: Function | null;
+  loggerOnError: Function | null;
+  loggerOnInfo: Function | null;
 }>;
+
+type ResponseResult = AxiosResponse<any> & { result: boolean };
 
 export const eqbGenerateClient = (
   requestLocation: string,
   options?: EqbClientOptions
 ) => {
   const accessTokenHeader = options?.accessTokenHeaderKey || "x-access-token";
-  const logger = (...args: any[]) => {
-    if (options?.loggerLevel === null) {
-      return;
-    } else if (options?.loggerLevel === undefined) {
-      console.error(...args);
-    } else {
-      options.loggerLevel(...args);
-    }
+  const logger = {
+    error: (...args: any[]) => {
+      if (options?.loggerOnError === null) {
+        return;
+      } else if (options?.loggerOnError === undefined) {
+        console.error(...args);
+      } else {
+        options.loggerOnError(...args);
+      }
+    },
+    info: (...args: any[]) => {
+      if (options?.loggerOnInfo === null) {
+        return;
+      } else if (options?.loggerOnInfo === undefined) {
+        console.info(...args);
+      } else {
+        options.loggerOnInfo(...args);
+      }
+    },
   };
 
   const baseClient = axios.create({
@@ -49,27 +63,25 @@ export const eqbGenerateClient = (
         return { result: true };
       })
       .catch((err) => {
-        console.error(err.response.data);
+        logger.error(err.response.data);
         return { result: false };
       });
   }
 
-  async function resolver(
-    config: AxiosRequestConfig
-  ): Promise<AxiosResponse<any>> {
+  async function resolver(config: AxiosRequestConfig): Promise<ResponseResult> {
     return baseClient
       .request(config)
       .then((result) => {
-        return { ...result.data };
+        return { ...result.data, result: result.data.result };
       })
       .catch(async (result) => {
         if (result.response) {
           // Request has been resolved with code 400 ~ 500
-          console.error(
+          logger.error(
             `Error ${result.response.data.status} : ${result.response.data.message}`
           );
           if (result.response.data.code === "TOKEN_EXPIRED") {
-            console.info("Retrying Login...");
+            logger.info("Retrying Login...");
             if (!(await renewAccessToken()).result) {
               return { ...result };
             } else {
@@ -78,22 +90,19 @@ export const eqbGenerateClient = (
           }
         } else if (result.request) {
           // Request failed
-          console.error(result.request);
+          logger.error(result.request);
         } else {
           // Error on request processing
-          console.error("Error", result.message);
+          logger.error("Error", result.message);
         }
       });
   }
 
   // Translate methods to config JSON
   const eqbClient = {
-    request: (config: AxiosRequestConfig): Promise<AxiosResponse<any>> =>
+    request: (config: AxiosRequestConfig): Promise<ResponseResult> =>
       resolver(config),
-    get: (
-      url: string,
-      config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    get: (url: string, config?: AxiosRequestConfig): Promise<ResponseResult> =>
       resolver({
         ...config,
         url,
@@ -102,35 +111,32 @@ export const eqbGenerateClient = (
     delete: (
       url: string,
       config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    ): Promise<ResponseResult> =>
       resolver({ ...config, url, method: "delete" }),
-    head: (
-      url: string,
-      config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    head: (url: string, config?: AxiosRequestConfig): Promise<ResponseResult> =>
       resolver({ ...config, url, method: "head" }),
     options: (
       url: string,
       config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    ): Promise<ResponseResult> =>
       resolver({ ...config, url, method: "options" }),
     post: (
       url: string,
       data: any,
       config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    ): Promise<ResponseResult> =>
       resolver({ ...config, url, data, method: "post" }),
     put: (
       url: string,
       data: any,
       config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    ): Promise<ResponseResult> =>
       resolver({ ...config, url, data, method: "put" }),
     patch: (
       url: string,
       data: any,
       config?: AxiosRequestConfig
-    ): Promise<AxiosResponse<any>> =>
+    ): Promise<ResponseResult> =>
       resolver({ ...config, url, data, method: "patch" }),
   };
 
