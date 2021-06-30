@@ -5,35 +5,51 @@ type EqbClientOptions = Partial<{
   accessTokenHeaderKey: string;
   loggerOnError: Function | null;
   loggerOnInfo: Function | null;
+  accessTokenStorageKey: string;
+  refreshTokenStorageKey: string;
+  tokenResignEndpiont: string;
 }>;
 
 type ResponseResult = AxiosResponse<any> & { result: boolean };
+
+const resolveLogger = (
+  option: Function | null | undefined,
+  loggerLevel: Function
+): Function => {
+  if (option === null) {
+    return () => {};
+  } else if (option === undefined) {
+    return loggerLevel;
+  } else {
+    return option;
+  }
+};
+
+const resolveAccessTokenStorage = (option: boolean): Storage => {
+  return option ? localStorage : sessionStorage;
+};
 
 export const eqbGenerateClient = (
   requestLocation: string,
   options?: EqbClientOptions
 ) => {
-  const accessTokenHeader = options?.accessTokenHeaderKey || "x-access-token";
   const logger = {
-    error: (...args: any[]) => {
-      if (options?.loggerOnError === null) {
-        return;
-      } else if (options?.loggerOnError === undefined) {
-        console.error(...args);
-      } else {
-        options.loggerOnError(...args);
-      }
-    },
-    info: (...args: any[]) => {
-      if (options?.loggerOnInfo === null) {
-        return;
-      } else if (options?.loggerOnInfo === undefined) {
-        console.info(...args);
-      } else {
-        options.loggerOnInfo(...args);
-      }
-    },
+    error: (...args: any[]) =>
+      resolveLogger(options?.loggerOnError, console.error)(...args),
+    info: (...args: any[]) =>
+      resolveLogger(options?.loggerOnInfo, console.info)(...args),
   };
+
+  const accessTokenStoarage = resolveAccessTokenStorage(
+    options?.saveAccessTokenToLocalStorage || true
+  );
+
+  const accessTokenHeader = options?.accessTokenHeaderKey || "x-access-token";
+
+  const accessTokenKey = options?.accessTokenStorageKey || "access-token";
+  const refreshTokenKey = options?.refreshTokenStorageKey || "refresh-token";
+
+  const resignEndpoint = options?.tokenResignEndpiont || "/auth/resign";
 
   const baseClient = axios.create({
     baseURL: requestLocation,
@@ -44,20 +60,20 @@ export const eqbGenerateClient = (
 
   // It renews access token
   async function renewAccessToken(): Promise<{ result: boolean }> {
-    const refreshToken = localStorage.getItem("refresh-token");
+    const refreshToken = localStorage.getItem(refreshTokenKey);
     if (!refreshToken) {
       return { result: false };
     }
     return baseClient
-      .post("auth/resign", { token: refreshToken })
+      .post(resignEndpoint, { token: refreshToken })
       .then((res) => {
         baseClient.defaults.headers.common[accessTokenHeader] =
           res.data.data.token;
 
         if (options?.saveAccessTokenToLocalStorage) {
-          localStorage.setItem("access-token", res.data.data.token);
+          accessTokenStoarage.setItem(accessTokenKey, res.data.data.token);
         } else {
-          sessionStorage.setItem("access-token", res.data.data.token);
+          accessTokenStoarage.setItem(accessTokenKey, res.data.data.token);
         }
 
         return { result: true };
@@ -70,7 +86,13 @@ export const eqbGenerateClient = (
 
   async function resolver(config: AxiosRequestConfig): Promise<ResponseResult> {
     return baseClient
-      .request(config)
+      .request({
+        ...config,
+        headers: {
+          ...config.headers,
+          [accessTokenHeader]: accessTokenStoarage.getItem(accessTokenKey),
+        },
+      })
       .then((result) => {
         return { ...result.data, result: result.data.result };
       })
