@@ -1,6 +1,6 @@
 {
   "name": "eqb-request-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Axios Wrapped HTTP requset client works with express-quick-builder based server",
   "main": "dist/index.js",
   "repository": "https://github.com/hadmarine/eqb-request-client",
