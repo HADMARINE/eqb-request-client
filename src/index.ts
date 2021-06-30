@@ -70,11 +70,7 @@ export const eqbGenerateClient = (
         baseClient.defaults.headers.common[accessTokenHeader] =
           res.data.data.token;
 
-        if (options?.saveAccessTokenToLocalStorage) {
-          accessTokenStoarage.setItem(accessTokenKey, res.data.data.token);
-        } else {
-          accessTokenStoarage.setItem(accessTokenKey, res.data.data.token);
-        }
+        accessTokenStoarage.setItem(accessTokenKey, res.data.data);
 
         return { result: true };
       })
