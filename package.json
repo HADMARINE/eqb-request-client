@@ -1,12 +1,11 @@
 {
   "name": "eqb-request-client",
-  "version": "0.5.2",
+  "version": "0.7.0-rc3",
   "description": "Axios Wrapped HTTP requset client works with express-quick-builder based server",
   "main": "dist/index.js",
   "repository": "https://github.com/hadmarine/eqb-request-client",
   "author": "HADMARINE",
   "license": "MIT",
-  "private": false,
   "dependencies": {
     "axios": "^0.21.1"
   },
@@ -18,6 +17,7 @@
     "gulp": "^4.0.2",
     "gulp-typescript": "^6.0.0-alpha.1",
     "merge2": "^1.4.1",
+    "prettier": "^2.3.2",
     "ts-jest": "^27.0.2",
     "ts-node": "^10.0.0",
     "typescript": "^4.3.2"

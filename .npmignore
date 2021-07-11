@@ -3,6 +3,7 @@ node_modules
 .eslintrc.js
 .npmignore
 .prettierignore
+.prettierrc.json
 SECURITY.md
 tsconfig.json
 tslint.json
@@ -11,3 +12,6 @@ TODO.md
 gulpfile.js
 yarn-error.log
 .gitignore
+.yarn
+.pnp.js
+.vscode
