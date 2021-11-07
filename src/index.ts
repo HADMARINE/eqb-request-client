@@ -115,6 +115,7 @@ export const eqbGenerateClient = (
               return await resolver(config);
             }
           }
+          return { result: false };
         } else if (result.request) {
           // Request failed
           logger.error(result.request);
