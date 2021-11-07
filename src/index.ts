@@ -118,9 +118,11 @@ export const eqbGenerateClient = (
         } else if (result.request) {
           // Request failed
           logger.error(result.request);
+          return { result: false };
         } else {
           // Error on request processing
           logger.error('Error', result.message);
+          return { result: false };
         }
       });
   }
