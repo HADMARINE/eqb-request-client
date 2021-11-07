@@ -99,7 +99,7 @@ export const eqbGenerateClient = (
         },
       })
       .then((result) => {
-        return { ...result.data, result: result.data.result };
+        return { ...result.data, result: result.data.result, raw: result };
       })
       .catch(async (result) => {
         if (result.response) {
@@ -110,12 +110,12 @@ export const eqbGenerateClient = (
           if (result.response.data.code === 'TOKEN_EXPIRED') {
             logger.info('Retrying Login...');
             if (!(await renewAccessToken()).result) {
-              return { ...result };
+              return { result: false, ...result.data };
             } else {
               return await resolver(config);
             }
           }
-          return { result: false };
+          return { result: false, ...result.data, raw: result };
         } else if (result.request) {
           // Request failed
           logger.error(result.request);
