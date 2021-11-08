@@ -12,7 +12,12 @@ type EqbClientOptions = Partial<{
   onTokenResignFail: () => void;
 };
 
-type ResponseResult = AxiosResponse<any> & { result: boolean };
+type ResponseResult = {
+  data: any;
+  code: string;
+  result: boolean;
+  raw: AxiosResponse<any>;
+};
 
 const resolveLogger = (
   option: Function | null | undefined,
@@ -99,7 +104,12 @@ export const eqbGenerateClient = (
         },
       })
       .then((result) => {
-        return { ...result.data, result: result.data.result, raw: result };
+        return {
+          data: result?.data?.data,
+          code: result?.data?.code || result?.statusText || 'undefined',
+          result: result?.data?.result,
+          raw: result,
+        };
       })
       .catch(async (result) => {
         if (result.response) {
@@ -110,20 +120,49 @@ export const eqbGenerateClient = (
           if (result.response.data.code === 'TOKEN_EXPIRED') {
             logger.info('Retrying Login...');
             if (!(await renewAccessToken()).result) {
-              return { result: false, ...result.data };
+              return {
+                data: result?.response?.data?.data,
+                code:
+                  result?.response?.data?.code ||
+                  result?.response?.statusText ||
+                  'undefined',
+                result: false,
+                raw: result,
+              };
             } else {
               return await resolver(config);
             }
           }
-          return { result: false, ...result.data, raw: result };
-        } else if (result.request) {
+          return {
+            data: result?.response?.data?.data,
+            code:
+              result?.response?.data?.code ||
+              result?.response?.statusText ||
+              'undefined',
+            result: false,
+            raw: result,
+          };
+        } else if (result?.request) {
           // Request failed
-          logger.error(result.request);
-          return { result: false };
+          logger.error(result?.request);
+          return {
+            data: result?.response?.data?.data,
+            code:
+              result?.response?.data?.code ||
+              result?.response?.statusText ||
+              'undefined',
+            result: false,
+            raw: result,
+          };
         } else {
           // Error on request processing
-          logger.error('Error', result.message);
-          return { result: false };
+          logger.error('Error : Request failed - failed to reach server');
+          return {
+            data: undefined,
+            code: 'REQUEST_FAIL',
+            result: false,
+            raw: result,
+          };
         }
       });
   }
